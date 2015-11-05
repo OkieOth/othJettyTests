@@ -1,0 +1,127 @@
+apply plugin: 'java'
+//apply plugin: 'application'
+apply plugin: 'groovy'
+
+sourceCompatibility = '1.7'
+[compileJava, compileTestJava]*.options*.encoding = 'UTF-8'
+
+project.group = 'de.othsoft.examples.jetty'
+project.version = '0.1-SNAPSHOT'
+
+
+// NetBeans will automatically add "run" and "debug" tasks relying on the
+// "mainClass" property. You may however define the property prior executing
+// tasks by passing a "-PmainClass=<QUALIFIED_CLASS_NAME>" argument.
+//
+// Note however, that you may define your own "run" and "debug" task if you
+// prefer. In this case NetBeans will not add these tasks but you may rely on
+// your own implementation.
+
+if (!hasProperty('mainClass')) {
+    ext.mainClass = 'de.othsoft.examples.jetty.SimpleServer'
+}
+
+
+// to use enter: gradle upload
+uploadArchives {
+    repositories {
+	flatDir {
+		dirs "${System.getenv('HOME')}/myGradleRepos/${project.group}/${project.name}"
+	}
+    }
+}
+
+repositories {
+    ivy {
+        url "file://${System.getenv('HOME')}/myGradleRepos"
+        layout "pattern", {
+            artifact "[organisation]/[artifact]/[artifact]-[revision].[ext]"
+        }
+    }
+    mavenCentral()
+    // You may define additional repositories, or even remove "mavenCentral()".
+    // Read more about repositories here:
+    //   http://www.gradle.org/docs/current/userguide/dependency_management.html#sec:repositories
+}
+
+dependencies {
+    testCompile group: 'junit', name: 'junit', version: '4.10'
+    compile 'org.slf4j:slf4j-api:1.7.5'
+    compile 'ch.qos.logback:logback-classic:1.0.9'
+    compile 'org.eclipse.jetty:jetty-server:9.3.4.v20151007'
+    compile 'commons-cli:commons-cli:1.3'
+    testCompile 'org.codehaus.groovy:groovy-all:2.4.3'
+}
+
+configurations {
+    integrationTestCompile.extendsFrom testCompile
+    integrationTestRuntime.extendsFrom testRuntime
+}
+
+sourceSets {
+    integrationTest {
+        java {
+            compileClasspath += main.output + test.output
+            runtimeClasspath += main.output + test.output
+            srcDir file('src/integration_test/java')
+        }
+        /* not needed this time
+        resources.srcDir file('src/integration-test/resources')
+        */
+    }
+}
+
+task integrationTest(type: Test) {
+    doFirst {
+        println 'create fat jar'
+        fatJar
+        println 'copy fat jar to vagrant dir'
+        copy {
+            from 'build/libs'
+            into 'src/integration_test/vagrant/ubuntu_logserver/tmp'
+            include 'simpleServer-all-0.1-SNAPSHOT.jar'
+        }
+        // that's the place to start the test vagrant machine        
+        println "project base directory: ${project.rootDir}/src/integration_test/vagrant/ubuntu_logserver"
+        println 'before integration tests - ' + new Date().getTime()
+        def sout = new StringBuffer()
+        def serr = new StringBuffer()
+        def proc = "${project.rootDir}/src/integration_test/scripts/startVagrant.sh".execute()
+        proc.consumeProcessOutput(sout,serr)
+        proc.waitForOrKill(20000)
+        println "out: $sout \n err: $serr"
+    }
+    
+    doLast {
+        // that's the place to start the test vagrant machine
+        def sout = new StringBuffer()
+        def serr = new StringBuffer()
+        def proc = "${project.rootDir}/src/integration_test/scripts/stopVagrant.sh".execute()
+        proc.consumeProcessOutput(sout,serr)
+        proc.waitForOrKill(20000)
+        println "out: $sout \n err: $serr"
+        println 'after integration tests - ' + new Date().getTime()
+    }
+    testClassesDir = sourceSets.integrationTest.output.classesDir
+    classpath = sourceSets.integrationTest.runtimeClasspath
+    outputs.upToDateWhen { false }
+}
+
+check.dependsOn integrationTest
+integrationTest.mustRunAfter test
+
+
+tasks.withType(Test) {
+    reports.html.destination = file("${reporting.baseDir}/${name}")
+}
+
+task fatJar(type: Jar) {
+	manifest {
+        attributes 'Implementation-Title': 'Jetty Test Simple Server',  
+        	'Implementation-Version': version,
+        	'Main-Class': 'de.othsoft.examples.jetty.SimpleServer'
+    }
+    baseName = project.name + '-all'
+    from { configurations.compile.collect { it.isDirectory() ? it : zipTree(it) } }
+    with jar
+}
