@@ -5,15 +5,15 @@
 # vi: set ft=ruby :
 
 Vagrant.configure(2) do |config|
-  config.vm.box = "ubuntu/trusty64"
+  config.vm.box = "ubuntu/wily64"
   config.vm.box_check_update = false
-  config.vm.network "forwarded_port", guest: 11211, host: 12211
+  config.vm.network "private_network", type: "dhcp"
   config.vm.provider "virtualbox" do |vb|
      vb.memory = "1024"
   end
   config.vm.provision "shell", inline: <<-SHELL
      sudo apt-get update
-     sudo apt-get install -y openjdk-7-jre
+     sudo apt-get install -y openjdk-8-jre
      # start - modify rsyslog config - make installation insecure
      sudo echo 'user.debug      /Vagrant/logs/user_debug.log' > /etc/rsyslog.d/60-oth_logger.conf
      sudo echo '$ModLoad imudp' >> /etc/rsyslog.conf

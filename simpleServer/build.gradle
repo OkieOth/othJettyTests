@@ -65,6 +65,11 @@ sourceSets {
             runtimeClasspath += main.output + test.output
             srcDir file('src/integration_test/java')
         }
+        groovy {
+            compileClasspath += main.output + test.output
+            runtimeClasspath += main.output + test.output
+            srcDir file('src/integration_test/groovy')            
+        }
         /* not needed this time
         resources.srcDir file('src/integration-test/resources')
         */
@@ -82,24 +87,25 @@ task integrationTest(type: Test) {
             include 'simpleServer-all-0.1-SNAPSHOT.jar'
         }
         // that's the place to start the test vagrant machine        
-        println "project base directory: ${project.rootDir}/src/integration_test/vagrant/ubuntu_logserver"
         println 'before integration tests - ' + new Date().getTime()
-        def sout = new StringBuffer()
-        def serr = new StringBuffer()
-        def proc = "${project.rootDir}/src/integration_test/scripts/startVagrant.sh".execute()
-        proc.consumeProcessOutput(sout,serr)
-        proc.waitForOrKill(20000)
-        println "out: $sout \n err: $serr"
+        println 'start vm'
+        "${project.rootDir}/src/integration_test/scripts/startVagrant.sh".execute().in.eachLine {
+            println it
+        }
+        println 'vm started'
+        println 'retrieve the ip address of the vm'
+       "${project.rootDir}/src/integration_test/scripts/print_vm_address.sh".execute().in.eachLine {
+            println it
+       }
     }
     
     doLast {
         // that's the place to start the test vagrant machine
         def sout = new StringBuffer()
         def serr = new StringBuffer()
-        def proc = "${project.rootDir}/src/integration_test/scripts/stopVagrant.sh".execute()
-        proc.consumeProcessOutput(sout,serr)
-        proc.waitForOrKill(20000)
-        println "out: $sout \n err: $serr"
+        "${project.rootDir}/src/integration_test/scripts/stopVagrant.sh".execute().in.eachLine {
+            println it
+        }
         println 'after integration tests - ' + new Date().getTime()
     }
     testClassesDir = sourceSets.integrationTest.output.classesDir
