@@ -66,24 +66,24 @@ class SimpleServer_Test {
         // test if this port is already used
         assertFalse ('port 9090 already in use', doListen (/.*:9090\s.*/,false));
         print 'test9090OnAllAdresses started ...';
-        SimpleServerHandler handler = new SimpleServerHandler(SimpleServer.identifier);
+        SimpleServerHandler handler = new SimpleServerHandler();
         Server server = SimpleServer.buildServer('9090',null,handler);
         boolean threadRuns = false;
         Thread.start {
             threadRuns = true;
-            print 'Server started'
+            println 'Server started'
             SimpleServer.runServer(server);
-            print 'Server stopped'
+            println 'Server stopped'
             threadRuns = false;
         };
-        sleep(1000);
+        Thread.sleep(1000);
         // now a service listen on port 9090
         assertTrue ('can not find server listen on port 9090',doListen (/.*\s:::9090\s.*/,true));
         server.stop();
         while (threadRuns) {
-            sleep(10);
+            Thread.sleep(10);
         }
-        print 'test9090OnAllAdresses finished';
+        println 'test9090OnAllAdresses finished';
     }
 
     @Test
@@ -91,12 +91,12 @@ class SimpleServer_Test {
         // test if this port is already used
         assertFalse ('port 9092 already in use', doListen (/.*\s:::9092\s.*/,false));
         print 'test9092OnAllAdresses started ...';
-        SimpleServerHandler handler = new SimpleServerHandler(SimpleServer.identifier);
+        SimpleServerHandler handler = new SimpleServerHandler();
         Server server = SimpleServer.buildServer('9092',null,handler);
         boolean threadRuns = false;
         Thread.start {
             threadRuns = true;
-            print 'Server started'
+            println 'Server started'
             SimpleServer.runServer(server);
             print 'Server stopped'
             threadRuns = false;
@@ -108,7 +108,7 @@ class SimpleServer_Test {
         while (threadRuns) {
             sleep(10);
         }
-        print 'test9092OnAllAdresses finished';
+        println 'test9092OnAllAdresses finished';
     }
 
     @Test
@@ -116,14 +116,14 @@ class SimpleServer_Test {
         // test if this port is already used
         assertFalse ('port 9095 already in use', doListen (/.*:9095\s.*/,false));
         print 'test9095OnLocalhostAdresses started ...';
-        SimpleServerHandler handler = new SimpleServerHandler(SimpleServer.identifier);
+        SimpleServerHandler handler = new SimpleServerHandler();
         Server server = SimpleServer.buildServer('9095','127.0.0.1',handler);
         boolean threadRuns = false;
         Thread.start {
             threadRuns = true;
-            print 'Server started'
+            println 'Server started'
             SimpleServer.runServer(server);
-            print 'Server stopped'
+            println 'Server stopped'
             threadRuns = false;
         };
         sleep(1000);
@@ -133,6 +133,6 @@ class SimpleServer_Test {
         while (threadRuns) {
             sleep(10);
         }
-        print 'test9095OnLocalhostAdresses finished';
+        println 'test9095OnLocalhostAdresses finished';
     }
 }

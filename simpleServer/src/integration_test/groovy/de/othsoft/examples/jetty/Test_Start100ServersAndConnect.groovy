@@ -51,9 +51,8 @@ class Test_Start100ServersAndConnect {
         }
         
         // start the SimpleServer instances
-        "$whereIAm/src/integration_test/scripts/startSimpleServer.sh start 10".execute().in.eachLine {
-            println it
-        }
+        def process = "$whereIAm/src/integration_test/scripts/startSimpleServer.sh start 10".execute();
+        process.waitFor();
     }
 
     @AfterClass
@@ -71,6 +70,19 @@ class Test_Start100ServersAndConnect {
     @Test
     public void connectOneClient() {
         assertNotNull ('no ip address found',vmIp)
+        // maybe the servers are not ready to handle requests ... so wait for a while
+        for (int i=0;i<10000;i++) {
+            try {
+                def urlTxt = "http://$vmIp:$portStart";
+                println "test request $urlTxt"
+                new URL(urlTxt).getText();
+                break;
+            }
+            catch(ConnectException e) {
+                sleep(100);
+                println ("wait for test request ...")
+            }
+        }
         for (int i=0;i<10;i++) {
             for (int j=portStart;j<portEnd;j++) {
                 def urlTxt = "http://$vmIp:$j";

@@ -17,6 +17,8 @@ STOP=1
 
 PID_FILE=${scriptName%.sh}.pid
 
+JAR_NAME=`ls /vagrant/tmp/simpleServer-all-*.jar`
+JAR_NAME=${JAR_NAME##*/}
 
 function cleanUp {
     	# remove a existing pid file
@@ -32,7 +34,7 @@ if [ "$#" -lt 1 ]; then
 	exit 1
 fi
 
-if [ $2!='' ]; then
+if [ "$#" -gt 1 ]; then
 	MAX_VALUE=$2
 fi
 
@@ -54,12 +56,13 @@ esac
 
 pushd $scriptPos/.. >> /dev/null
 
-while [  $COUNTER -lt $MAX_VALUE ]; do
+while [ $COUNTER -lt $MAX_VALUE ]; do
 	if ! [ $STOP -eq 1 ]; then
 		# do start the program
 		echo `pwd`
 		echo "start SimpleServer on port $START_PORT"
-		if ! screen -S SimpleServer_$START_PORT -d -m  java -jar $PATH_TO_PROG/simpleServer-all-0.1-SNAPSHOT.jar -p $START_PORT; then
+		#if ! screen -S SimpleServer_$START_PORT -d -m  java -jar $PATH_TO_PROG/simpleServer-all-0.1-SNAPSHOT.jar -p $START_PORT; then
+		if ! screen -S SimpleServer_$START_PORT -d -m  java -jar $PATH_TO_PROG/$JAR_NAME -p $START_PORT; then
 			popd
 			exit 1
 		fi
@@ -74,4 +77,4 @@ while [  $COUNTER -lt $MAX_VALUE ]; do
 	let START_PORT=START_PORT+1
 	let COUNTER=COUNTER+1
 done
-popd
+popd >> /dev/null

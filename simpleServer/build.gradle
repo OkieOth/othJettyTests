@@ -1,6 +1,7 @@
 apply plugin: 'java'
 //apply plugin: 'application'
 apply plugin: 'groovy'
+apply plugin: 'maven-publish'
 
 sourceCompatibility = '1.7'
 [compileJava, compileTestJava]*.options*.encoding = 'UTF-8'
@@ -31,26 +32,33 @@ uploadArchives {
     }
 }
 
-repositories {
-    ivy {
-        url "file://${System.getenv('HOME')}/myGradleRepos"
-        layout "pattern", {
-            artifact "[organisation]/[artifact]/[artifact]-[revision].[ext]"
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            from components.java
         }
     }
+}
+
+publishing {
+    repositories {
+        maven {
+            url "${System.getenv('HOME')}/myMavenRepos"
+        }
+    }
+}
+
+repositories {
+    maven {
+        url "${System.getenv('HOME')}/myMavenRepos"
+    }
     mavenCentral()
-    // You may define additional repositories, or even remove "mavenCentral()".
-    // Read more about repositories here:
-    //   http://www.gradle.org/docs/current/userguide/dependency_management.html#sec:repositories
 }
 
 dependencies {
-    testCompile group: 'junit', name: 'junit', version: '4.10'
-    compile 'org.slf4j:slf4j-api:1.7.5'
-    compile 'ch.qos.logback:logback-classic:1.0.9'
-    compile 'org.eclipse.jetty:jetty-server:9.3.4.v20151007'
-    compile 'commons-cli:commons-cli:1.3'
+    compile 'de.othsoft.helper:othJettyHelper:0.1'
     testCompile 'org.codehaus.groovy:groovy-all:2.4.3'
+    testCompile group: 'junit', name: 'junit', version: '4.10'
 }
 
 configurations {
@@ -76,16 +84,31 @@ sourceSets {
     }
 }
 
+task fatJar(type: Jar) {
+    manifest {
+        attributes 'Implementation-Title': 'Jetty Test Simple Server',  
+        	'Implementation-Version': version,
+        	'Main-Class': 'de.othsoft.examples.jetty.SimpleServer'
+    }
+    baseName = project.name + '-all'
+    // TODO - if the file exists remove it
+    from { configurations.compile.collect { it.isDirectory() ? it : zipTree(it) } }
+    with jar
+}
+
+task copyFatJar(type: Copy) {
+    def fatJarName = "${project.name}-all-${project.version}.jar"
+    outputs.files file("${project.rootDir}/build/libs/$fatJarName")
+    println "copy fatJar '${fatJarName}' from '${project.rootDir}/build/libs' to '${project.rootDir}/src/integration_test/vagrant/ubuntu_logserver/tmp'"
+    copy {
+        from "${project.rootDir}/build/libs"
+        into "${project.rootDir}/src/integration_test/vagrant/ubuntu_logserver/tmp"
+        include fatJarName
+    }    
+}
+
 task integrationTest(type: Test) {
     doFirst {
-        println 'create fat jar'
-        fatJar
-        println 'copy fat jar to vagrant dir'
-        copy {
-            from 'build/libs'
-            into 'src/integration_test/vagrant/ubuntu_logserver/tmp'
-            include 'simpleServer-all-0.1-SNAPSHOT.jar'
-        }
         // that's the place to start the test vagrant machine        
         println 'before integration tests - ' + new Date().getTime()
         println 'start vm'
@@ -113,6 +136,10 @@ task integrationTest(type: Test) {
     outputs.upToDateWhen { false }
 }
 
+copyFatJar.dependsOn fatJar
+copyFatJar.mustRunAfter testClasses
+integrationTest.dependsOn copyFatJar
+
 check.dependsOn integrationTest
 integrationTest.mustRunAfter test
 
@@ -121,13 +148,13 @@ tasks.withType(Test) {
     reports.html.destination = file("${reporting.baseDir}/${name}")
 }
 
-task fatJar(type: Jar) {
-	manifest {
-        attributes 'Implementation-Title': 'Jetty Test Simple Server',  
-        	'Implementation-Version': version,
-        	'Main-Class': 'de.othsoft.examples.jetty.SimpleServer'
-    }
-    baseName = project.name + '-all'
-    from { configurations.compile.collect { it.isDirectory() ? it : zipTree(it) } }
-    with jar
+task dependenciesToLibDir(type: Copy) {
+    into "$buildDir/release/lib"
+    from configurations.runtime
+}
+
+task printDeps << {
+	configurations.runtime.forEach {
+		println it
+	}
 }

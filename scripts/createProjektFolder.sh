@@ -53,13 +53,14 @@ createDirOrExit "$PROJECT_DIR/src/integration_test/vagrant"
 # copy of extra files ... license, readme, gitignore and stuff
 copyFileOrExit "$scriptPos/../simpleServer/.gitignore" "$PROJECT_DIR"
 copyFileOrExit "$scriptPos/../simpleServer/LICENSE" "$PROJECT_DIR"
+copyFileOrExit "$scriptPos/res/logback.xml" "$PROJECT_DIR/src/main/resources"
 
 if ! [ -f "$PROJECT_DIR/README.md" ]; then
 	touch "$PROJECT_DIR/README.md"
 fi
 
-if ! [ -f "$PROJECT_DIR/build.gradle" ]; then	
-	baseFile="$scriptPos/res/build_gradle_base.groovy"	
+if ! [ -f "$PROJECT_DIR/build.gradle" ]; then
+	baseFile="$scriptPos/res/build_gradle_base.groovy"
 	echo "copy '$baseFile' to '$PROJECT_DIR/build.gradle'"
 	if ! cp "$baseFile" "$PROJECT_DIR/build.gradle"; then
 		echo "error while copy '$baseFile' to '$PROJECT_DIR/build.gradle'"

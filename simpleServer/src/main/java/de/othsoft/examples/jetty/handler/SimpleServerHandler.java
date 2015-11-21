@@ -6,6 +6,7 @@
 package de.othsoft.examples.jetty.handler;
 
 import de.othsoft.examples.jetty.SimpleServer;
+import de.othsoft.helper.base.Identifier;
 import java.io.IOException;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
@@ -20,19 +21,13 @@ import org.slf4j.LoggerFactory;
  * @author eiko
  */
 public class SimpleServerHandler extends AbstractHandler {
-    private final String logIdentifier;
-    
-    public SimpleServerHandler(String identifier) {
-        logIdentifier = identifier;
-    }
-    
     public void handle(String target,Request baseRequest,HttpServletRequest request,HttpServletResponse response) 
         throws IOException, ServletException {
-        logger.info("<<{}>> handleRequest from {} for {}",logIdentifier,request.getRemoteAddr(),request.getRequestURI());
+        logger.info("<<{}>> handleRequest from {} for {}",Identifier.getInst().getName(),request.getRemoteAddr(),request.getRequestURI());
         response.setContentType("text/html;charset=utf-8");
         response.setStatus(HttpServletResponse.SC_OK);
         baseRequest.setHandled(true);
-        response.getWriter().println("<h1>I'm "+logIdentifier+" :-)</h1>");
+        response.getWriter().println("<h1>I'm "+Identifier.getInst().getName()+" :-)</h1>");
     }
 
     private static Logger logger = LoggerFactory.getLogger(SimpleServer.class);

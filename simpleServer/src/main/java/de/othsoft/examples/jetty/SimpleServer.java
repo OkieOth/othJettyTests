@@ -13,107 +13,47 @@ specific language governing permissions and limitations under the License.
 package de.othsoft.examples.jetty;
 
 import de.othsoft.examples.jetty.handler.SimpleServerHandler;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.lang.management.ManagementFactory;
 import java.net.InetSocketAddress;
-import org.apache.commons.cli.CommandLine;
-import org.apache.commons.cli.CommandLineParser;
-import org.apache.commons.cli.DefaultParser;
-import org.apache.commons.cli.HelpFormatter;
-import org.apache.commons.cli.MissingOptionException;
-import org.apache.commons.cli.Option;
-import org.apache.commons.cli.Options;
 import org.eclipse.jetty.server.Handler;
 import org.eclipse.jetty.server.Server;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import de.othsoft.helper.base.Identifier;
+import de.othsoft.helper.jetty.EmbeddedJettyRunOptions;
+import de.othsoft.helper.jetty.StopJettyTimerThread;
+import de.othsoft.helper.main.PidFile;
 
 /**
  *
  * @author eiko
  */
 public class SimpleServer {
-
-    public static String identifier = "SimpleServer";
-    private static String pidFile=null;
-
     public static void main(String[] args) {
-        Options options = createOptions();
-        try {            
-            CommandLineParser parser = new DefaultParser();
-            CommandLine cmd = parser.parse(options, args);
-            if (cmd.hasOption("?")) {
-                printUsageAndExit(options);
-            }
-            if (!cmd.hasOption('p')) {
-                System.out.println("the port parameter is needed: for instance -p 9001");
-                printUsageAndExit(options);
-            }
-            String portStr = cmd.getOptionValue("p");
-            if (cmd.hasOption('i')) {
-                identifier = cmd.getOptionValue('i');
-            } else {
-                identifier += ("-" + portStr);
-            }
-            
-            if (cmd.hasOption('f')) {
-                pidFile = cmd.getOptionValue('f');
-            }
-            else {
-                pidFile = identifier+".pid";
-            }
-            createPidFile();
-            String addressStr = cmd.hasOption('a') ? cmd.getOptionValue('a') : null;
-            Server server = buildServer(portStr, addressStr, new SimpleServerHandler(identifier));
-            runServer(server);
-        } catch (MissingOptionException e) {
-            logger.error("<<{}>> {}: ", identifier, e.getClass().getName(), e.getMessage());
-            System.out.println(e.getMessage());
-            printUsageAndExit(options);
-        } catch (Exception e) {
-            logger.error("<<{}>> {}: ", identifier, e.getClass().getName(), e);
-            System.exit(1);
-        }
-    }
-    
-    private static void createPidFile() {
-        File f = new File(pidFile);
-        if (f.exists()) {
-            logger.error("<<{}>> error pid file ({}) exists, does the process already running?",identifier,pidFile);
-            System.exit(1);
-        }
         try {
-            FileOutputStream fout = new FileOutputStream(f);
-            f.deleteOnExit();
-            String pid = getPid();
-            fout.write(pid.getBytes());
-            fout.flush();
-            fout.close();
-        }
-        catch(Exception e) {
-            logger.error("<<{}>> error while create pid file ({}): {}, {}",identifier,pidFile,e.getClass().getName(),e.getMessage());
-        }
-    }
-    
-    private static void printUsageAndExit(Options options) {
-        HelpFormatter formatter = new HelpFormatter();
-        formatter.printHelp("java de.othserv.examples.jetty.SimpleServer", options);
-        System.exit(1);
-    }
+            EmbeddedJettyRunOptions jettyOptions = new EmbeddedJettyRunOptions(SimpleServer.class.getName());
+            jettyOptions.parse(args);
+            jettyOptions.ifMissOptionPrintUsageAndExit("p");
 
-    private static Options createOptions() {
-        Options options = new Options();
-        Option option = new Option("p", "port", true, "port the server listen on");
-        option.setRequired(true);
-        option.setType(Integer.class);
-        options.addOption(option);
-        options.addOption("a", "address", true, "the address the server is bind on (default all)");
-        options.addOption("i", "identifier", true, "optional identifier for log output");
-        options.addOption("f", "pidfile", true, "pid file to use");
-        options.addOption("?", "help", false, "show help");
-        return options;
+            String portStr = jettyOptions.getValue("p");
+            // do a reinit after the port is clear
+            Identifier.init(SimpleServer.class,portStr);
+            PidFile.getInst().createPidFileAndExitWhenAlreadyExist();
+            String addressStr = jettyOptions.hasOption("a") ? jettyOptions.getValue("a") : null;
+            Server server = buildServer(portStr, addressStr, new SimpleServerHandler());
+            if (jettyOptions.hasOption("t")) {
+                String secondsToStopStr = jettyOptions.getValue("t");
+                logger.info("<<{}>> found 't' option, will stop the server in {} seconds",Identifier.getInst().getName(),secondsToStopStr);
+                long secondsToStop = Long.parseLong(secondsToStopStr);
+                StopJettyTimerThread timerThread = new StopJettyTimerThread(server,secondsToStop);
+                timerThread.start();
+            }            
+            runServer(server);
+        } catch (Exception e) {
+            logger.error("<<{}>> {}: ", Identifier.getInst().getName(), e.getClass().getName(), e);
+            System.exit(1);
+        }
     }
+        
 
     /**
      * extracted for testing
@@ -123,27 +63,23 @@ public class SimpleServer {
         InetSocketAddress address = addressStr != null ? new InetSocketAddress(addressStr, port)
                 : new InetSocketAddress(port);
         Server server = new Server(address);
-        server.setHandler(new SimpleServerHandler(identifier));
+        server.setHandler(handler);
         if (addressStr != null) {
-            logger.info("<<{}>> bind on address {}, listen on port {}", identifier, addressStr, portStr);
+            logger.info("<<{}>> bind on address {}, listen on port {}", Identifier.getInst().getName(), addressStr, portStr);
         } else {
-            logger.info("<<{}>> bind on all adresses, listen on port {}", identifier, portStr);
+            logger.info("<<{}>> bind on all adresses, listen on port {}", Identifier.getInst().getName(), portStr);
         }
         return server;
     }
 
     public static void runServer(Server server) throws Exception {
         server.start();
-        logger.info("<<{}>> server started", identifier);
+        logger.info("<<{}>> server started", Identifier.getInst().getName());
         server.join();
     }
-
-    public static String getPid() {
-        String pidAndStuff = ManagementFactory.getRuntimeMXBean().getName();
-        int indexAt = pidAndStuff.indexOf("@");
-        String pid = pidAndStuff.substring(0,indexAt);
-        logger.info("<<{}>> pid={}", identifier,pid);
-        return pid;
+    
+    static {
+        Identifier.init(SimpleServer.class);
     }
     
     private static Logger logger = LoggerFactory.getLogger(SimpleServer.class);
