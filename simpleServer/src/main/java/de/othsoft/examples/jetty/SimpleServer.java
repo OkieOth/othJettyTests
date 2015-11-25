@@ -13,12 +13,11 @@ specific language governing permissions and limitations under the License.
 package de.othsoft.examples.jetty;
 
 import de.othsoft.examples.jetty.handler.SimpleServerHandler;
-import java.net.InetSocketAddress;
-import org.eclipse.jetty.server.Handler;
 import org.eclipse.jetty.server.Server;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import de.othsoft.helper.base.Identifier;
+import de.othsoft.helper.jetty.EmbeddedJettyMainFuncs;
 import de.othsoft.helper.jetty.EmbeddedJettyRunOptions;
 import de.othsoft.helper.jetty.StopJettyTimerThread;
 import de.othsoft.helper.main.PidFile;
@@ -39,7 +38,7 @@ public class SimpleServer {
             Identifier.init(SimpleServer.class,portStr);
             PidFile.getInst().createPidFileAndExitWhenAlreadyExist();
             String addressStr = jettyOptions.hasOption("a") ? jettyOptions.getValue("a") : null;
-            Server server = buildServer(portStr, addressStr, new SimpleServerHandler());
+            Server server = EmbeddedJettyMainFuncs.buildServer(portStr, addressStr, new SimpleServerHandler(),logger);
             if (jettyOptions.hasOption("t")) {
                 String secondsToStopStr = jettyOptions.getValue("t");
                 logger.info("<<{}>> found 't' option, will stop the server in {} seconds",Identifier.getInst().getName(),secondsToStopStr);
@@ -47,37 +46,13 @@ public class SimpleServer {
                 StopJettyTimerThread timerThread = new StopJettyTimerThread(server,secondsToStop);
                 timerThread.start();
             }            
-            runServer(server);
+            EmbeddedJettyMainFuncs.runServer(server,logger);
         } catch (Exception e) {
             logger.error("<<{}>> {}: ", Identifier.getInst().getName(), e.getClass().getName(), e);
             System.exit(1);
         }
     }
-        
-
-    /**
-     * extracted for testing
-     */
-    public static Server buildServer(String portStr, String addressStr, Handler handler) throws Exception {
-        int port = Integer.parseInt(portStr);
-        InetSocketAddress address = addressStr != null ? new InetSocketAddress(addressStr, port)
-                : new InetSocketAddress(port);
-        Server server = new Server(address);
-        server.setHandler(handler);
-        if (addressStr != null) {
-            logger.info("<<{}>> bind on address {}, listen on port {}", Identifier.getInst().getName(), addressStr, portStr);
-        } else {
-            logger.info("<<{}>> bind on all adresses, listen on port {}", Identifier.getInst().getName(), portStr);
-        }
-        return server;
-    }
-
-    public static void runServer(Server server) throws Exception {
-        server.start();
-        logger.info("<<{}>> server started", Identifier.getInst().getName());
-        server.join();
-    }
-    
+            
     static {
         Identifier.init(SimpleServer.class);
     }

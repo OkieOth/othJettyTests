@@ -54,6 +54,9 @@ createDirOrExit "$PROJECT_DIR/src/integration_test/vagrant"
 copyFileOrExit "$scriptPos/../simpleServer/.gitignore" "$PROJECT_DIR"
 copyFileOrExit "$scriptPos/../simpleServer/LICENSE" "$PROJECT_DIR"
 copyFileOrExit "$scriptPos/res/logback.xml" "$PROJECT_DIR/src/main/resources"
+copyFileOrExit "$scriptPos/res/print_vm_address.sh" "$PROJECT_DIR/src/integration_test/scripts"
+copyFileOrExit "$scriptPos/res/startVagrant.sh" "$PROJECT_DIR/src/integration_test/scripts"
+copyFileOrExit "$scriptPos/res/stopVagrant.sh" "$PROJECT_DIR/src/integration_test/scripts"
 
 if ! [ -f "$PROJECT_DIR/README.md" ]; then
 	touch "$PROJECT_DIR/README.md"

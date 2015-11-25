@@ -21,7 +21,9 @@ import org.junit.Test
 import static org.junit.Assert.*
 import de.othsoft.examples.jetty.handler.SimpleServerHandler
 import org.eclipse.jetty.server.Server
-
+import de.othsoft.helper.jetty.EmbeddedJettyMainFuncs
+import de.othsoft.helper.jetty.ListenTests
+import de.othsoft.helper.jetty.ListenTests
 /**
  *
  * @author eiko
@@ -47,92 +49,18 @@ class SimpleServer_Test {
     public void tearDown() {
     }
     
-    private boolean doListen(regExpPort,boolean listen) {
-        boolean ret = false;
-        'netstat -nat'.execute().in.eachLine {
-            if ( it ==~ regExpPort ) {
-                if (listen) {
-                    ret = it ==~ /.*\sLISTEN\s*$/;
-                }
-                else
-                    ret = true;
-            }
-        }
-        return ret;
-    }
-    
     @Test
     public void test9090OnAllAdresses() {
-        // test if this port is already used
-        assertFalse ('port 9090 already in use', doListen (/.*:9090\s.*/,false));
-        print 'test9090OnAllAdresses started ...';
-        SimpleServerHandler handler = new SimpleServerHandler();
-        Server server = SimpleServer.buildServer('9090',null,handler);
-        boolean threadRuns = false;
-        Thread.start {
-            threadRuns = true;
-            println 'Server started'
-            SimpleServer.runServer(server);
-            println 'Server stopped'
-            threadRuns = false;
-        };
-        Thread.sleep(1000);
-        // now a service listen on port 9090
-        assertTrue ('can not find server listen on port 9090',doListen (/.*\s:::9090\s.*/,true));
-        server.stop();
-        while (threadRuns) {
-            Thread.sleep(10);
-        }
-        println 'test9090OnAllAdresses finished';
+        ListenTests.startServerOnPortAndCheck('9090',null,new SimpleServerHandler());
     }
 
     @Test
     public void test9092OnAllAdresses() {
-        // test if this port is already used
-        assertFalse ('port 9092 already in use', doListen (/.*\s:::9092\s.*/,false));
-        print 'test9092OnAllAdresses started ...';
-        SimpleServerHandler handler = new SimpleServerHandler();
-        Server server = SimpleServer.buildServer('9092',null,handler);
-        boolean threadRuns = false;
-        Thread.start {
-            threadRuns = true;
-            println 'Server started'
-            SimpleServer.runServer(server);
-            print 'Server stopped'
-            threadRuns = false;
-        };
-        sleep(1000);
-        // now a service listen on port 9092
-        assertTrue ('can not find server listen on port 9092',doListen (/.*:9092\s.*/,true));
-        server.stop();
-        while (threadRuns) {
-            sleep(10);
-        }
-        println 'test9092OnAllAdresses finished';
+        ListenTests.startServerOnPortAndCheck('9092',null,new SimpleServerHandler());
     }
 
     @Test
     public void test9095OnLocalhostAdresses() {
-        // test if this port is already used
-        assertFalse ('port 9095 already in use', doListen (/.*:9095\s.*/,false));
-        print 'test9095OnLocalhostAdresses started ...';
-        SimpleServerHandler handler = new SimpleServerHandler();
-        Server server = SimpleServer.buildServer('9095','127.0.0.1',handler);
-        boolean threadRuns = false;
-        Thread.start {
-            threadRuns = true;
-            println 'Server started'
-            SimpleServer.runServer(server);
-            println 'Server stopped'
-            threadRuns = false;
-        };
-        sleep(1000);
-        // now a service listen on port 9095
-        assertTrue ('can not find server listen on port 9095',doListen (/.*\s127\.0\.0\.1:9095\s.*/,true));
-        server.stop();
-        while (threadRuns) {
-            sleep(10);
-        }
-        println 'test9095OnLocalhostAdresses finished';
+        ListenTests.startServerOnPortAndCheck('9095','127.0.0.1',new SimpleServerHandler());
     }
 }

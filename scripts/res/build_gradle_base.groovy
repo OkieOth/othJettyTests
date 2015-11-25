@@ -1,9 +1,11 @@
 apply plugin: 'java'
 //apply plugin: 'application'
 apply plugin: 'groovy'
+apply plugin: 'maven-publish'
 
 def projectMainClass='de.othsoft.examples.jetty'
 def projectTitle='This is a sample title - change'
+def vagrantMachineName='ubuntu_logserver'
 
 sourceCompatibility = '1.7'
 [compileJava, compileTestJava]*.options*.encoding = 'UTF-8'
@@ -15,31 +17,32 @@ if (!hasProperty('mainClass')) {
     ext.mainClass = projectMainClass
 }
 
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            from components.java
+        }
+    }
+}
 
-uploadArchives {
+publishing {
     repositories {
-        flatDir {
-                dirs "${System.getenv('HOME')}/myGradleRepos/${project.group}/${project.name}"
+        maven {
+            url "${System.getenv('HOME')}/myMavenRepos"
         }
     }
 }
 
 repositories {
-    ivy {
-        url "file://${System.getenv('HOME')}/myGradleRepos"
-        layout "pattern", {
-            artifact "[organisation]/[artifact]/[artifact]-[revision].[ext]"
-        }
+    maven {
+        url "${System.getenv('HOME')}/myMavenRepos"
     }
     mavenCentral()
 }
 
 dependencies {
+    compile 'de.othsoft.helper:othJettyHelper:0.1' 
     testCompile group: 'junit', name: 'junit', version: '4.10'
-    compile 'org.slf4j:slf4j-api:1.7.5'
-    compile 'ch.qos.logback:logback-classic:1.0.9'
-    compile 'org.eclipse.jetty:jetty-server:9.3.4.v20151007'
-    compile 'commons-cli:commons-cli:1.3'
     testCompile 'org.codehaus.groovy:groovy-all:2.4.3'
 }
 
@@ -66,19 +69,11 @@ sourceSets {
     }
 }
 
+
+
 task integrationTest(type: Test) {
     doFirst {
         println 'before integration tests - ' + new Date().getTime()
-/*
-        println 'create fat jar'
-        fatJar
-        println 'copy fat jar to vagrant dir'
-        copy {
-            from 'build/libs'
-            into 'src/integration_test/vagrant/ubuntu_logserver/tmp'
-            include 'simpleServer-all-0.1-SNAPSHOT.jar'
-        }
-        // that's the place to start the test vagrant machine        
         println 'start vm'
         "${project.rootDir}/src/integration_test/scripts/startVagrant.sh".execute().in.eachLine {
             println it
@@ -88,16 +83,12 @@ task integrationTest(type: Test) {
         "${project.rootDir}/src/integration_test/scripts/print_vm_address.sh".execute().in.eachLine {
             println it
        }
-*/
     }
     
     doLast {
-/*
-        // that's the place to start the test vagrant machine
         "${project.rootDir}/src/integration_test/scripts/stopVagrant.sh".execute().in.eachLine {
             println it
         }
-*/
         println 'after integration tests - ' + new Date().getTime()
     }
     testClassesDir = sourceSets.integrationTest.output.classesDir
@@ -105,12 +96,19 @@ task integrationTest(type: Test) {
     outputs.upToDateWhen { false }
 }
 
-check.dependsOn integrationTest
-integrationTest.mustRunAfter test
-
-
 tasks.withType(Test) {
     reports.html.destination = file("${reporting.baseDir}/${name}")
+}
+
+task copyFatJar(type: Copy) {
+    def fatJarName = "${project.name}-all-${project.version}.jar"
+    outputs.files file("${project.rootDir}/build/libs/$fatJarName")
+    println "copy fatJar '${fatJarName}' from '${project.rootDir}/build/libs' to '${project.rootDir}/src/integration_test/vagrant/${vagrantMachineName}/tmp'"
+    copy {
+        from "${project.rootDir}/build/libs"
+        into "${project.rootDir}/src/integration_test/vagrant/${vagrantMachineName}/tmp"
+        include fatJarName
+    }    
 }
 
 task fatJar(type: Jar) {
@@ -123,4 +121,11 @@ task fatJar(type: Jar) {
     from { configurations.compile.collect { it.isDirectory() ? it : zipTree(it) } }
     with jar
 }
+
+copyFatJar.dependsOn fatJar
+copyFatJar.mustRunAfter testClasses
+integrationTest.dependsOn copyFatJar
+
+check.dependsOn integrationTest
+integrationTest.mustRunAfter test
 

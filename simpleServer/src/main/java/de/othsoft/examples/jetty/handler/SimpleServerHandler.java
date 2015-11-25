@@ -30,5 +30,5 @@ public class SimpleServerHandler extends AbstractHandler {
         response.getWriter().println("<h1>I'm "+Identifier.getInst().getName()+" :-)</h1>");
     }
 
-    private static Logger logger = LoggerFactory.getLogger(SimpleServer.class);
+    private static Logger logger = LoggerFactory.getLogger(SimpleServerHandler.class);
 }
