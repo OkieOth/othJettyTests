@@ -23,7 +23,7 @@ import de.othsoft.examples.jetty.handler.SimpleServerHandler
 import org.eclipse.jetty.server.Server
 import de.othsoft.helper.jetty.EmbeddedJettyMainFuncs
 import de.othsoft.helper.jetty.ListenTests
-import de.othsoft.helper.jetty.ListenTests
+
 /**
  *
  * @author eiko
