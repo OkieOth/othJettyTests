@@ -1,0 +1,29 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+Vagrant.configure(2) do |config|
+  config.vm.box = "ubuntu/wily64"
+  config.vm.box_check_update = false
+  config.vm.network "private_network", type: "dhcp"
+  config.vm.provider "virtualbox" do |vb|
+     vb.memory = "1024"
+  end
+  config.vm.provision "shell", inline: <<-SHELL
+     sudo apt-get update
+     sudo apt-get install -y openjdk-8-jre
+     sudo apt-get install -y memcached
+     # start - modify rsyslog config - make installation insecure
+     sudo echo 'user.debug      /Vagrant/logs/user_debug.log' > /etc/rsyslog.d/60-oth_logger.conf
+     sudo echo '$ModLoad imudp' >> /etc/rsyslog.conf
+     sudo echo '$UDPServerRun 514' >> /etc/rsyslog.conf
+     sudo echo 'user.debug	/Vagrant/logs/user_debug.log' > /etc/rsyslog.d/60-oth_logger.conf
+     sudo echo 'user.info       /Vagrant/logs/user_info.log' >> /etc/rsyslog.d/60-oth_logger.conf
+     sudo echo 'user.err	/Vagrant/logs/user_error.log' >> /etc/rsyslog.d/60-oth_logger.conf
+     sudo service rsyslog restart
+     # end - modify rsyslog config - make installation insecure     
+  SHELL
+end
+

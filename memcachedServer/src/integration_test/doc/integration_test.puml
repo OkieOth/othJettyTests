@@ -1,0 +1,131 @@
+@startuml
+actor Client1
+actor Client2
+participant memcachedServer1
+participant memcachedServer2
+participant memcachedServer3
+
+Client1 -> memcachedServer1: getUserId
+memcachedServer1 --> Client1: userId1
+Client2 -> memcachedServer1: getUserId
+memcachedServer1 --> Client2: userId2
+
+' Test that no values are set
+Client1 -> memcachedServer2: getUserValue (userId1)
+memcachedServer2 --> Client1: null
+note right: the value for userId2 isn't set
+Client1 -> memcachedServer3: getUserValue (userId1)
+memcachedServer3 --> Client1: null
+note right: the value for userId2 isn't set
+Client1 -> memcachedServer1: getUserValue (userId1)
+memcachedServer1 --> Client1: null
+note right: the value for userId2 isn't set
+
+Client2 -> memcachedServer2: getUserValue (userId1)
+memcachedServer2 --> Client2: null
+note right: the value for userId2 isn't set
+Client2 -> memcachedServer3: getUserValue (userId1)
+memcachedServer3 --> Client2: null
+note right: the value for userId2 isn't set
+Client2 -> memcachedServer1: getUserValue (userId1)
+memcachedServer1 --> Client2: null
+note right: the value for userId2 isn't set
+
+' set value1 for the first client and check the return values
+Client1 -> memcachedServer1: setUserValue (userId1,value1)
+Client1 -> memcachedServer2: getUserValue (userId1)
+memcachedServer2 --> Client1: value1
+Client1 -> memcachedServer3: getUserValue (userId1)
+memcachedServer3 --> Client1: value1
+Client1 -> memcachedServer1: getUserValue (userId1)
+memcachedServer1 --> Client1: value1
+
+' test that no other value is set
+Client1 -> memcachedServer2: getUserValue (userId2)
+memcachedServer2 --> Client1: null
+note right: the value for userId2 isn't set
+Client1 -> memcachedServer3: getUserValue (userId2)
+memcachedServer3 --> Client1: null
+note right: the value for userId2 isn't set
+Client1 -> memcachedServer1: getUserValue (userId2)
+memcachedServer1 --> Client1: null
+note right: the value for userId2 isn't set
+
+' test that client2 can also retrieve value1
+Client2 -> memcachedServer2: getUserValue (userId1)
+memcachedServer2 --> Client2: value1
+Client2 -> memcachedServer3: getUserValue (userId1)
+memcachedServer3 --> Client2: value1
+Client2 -> memcachedServer2: getUserValue (userId1)
+memcachedServer1 --> Client2: value1
+
+' client2 sets value2 and read it again from all servers
+Client2 -> memcachedServer2: setUserValue(userId2,value2)
+Client2 -> memcachedServer2: getUserValue (userId2)
+memcachedServer2 --> Client2: value2
+Client2 -> memcachedServer3: getUserValue (userId2)
+memcachedServer3 --> Client2: value2
+Client2 -> memcachedServer1: getUserValue (userId2)
+memcachedServer1 --> Client2: value2
+
+' can also client1 retrieve value2 from all servers
+Client1 -> memcachedServer2: getUserValue (userId2)
+memcachedServer2 --> Client1: value2
+Client1 -> memcachedServer3: getUserValue (userId2)
+memcachedServer3 --> Client1: value2
+Client1 -> memcachedServer1: getUserValue (userId2)
+memcachedServer1 --> Client1: value2
+
+' tests that value1 is still available
+Client1 -> memcachedServer2: getUserValue (userId1)
+memcachedServer2 --> Client1: value1
+Client1 -> memcachedServer3: getUserValue (userId1)
+memcachedServer3 --> Client1: value1
+Client1 -> memcachedServer1: getUserValue (userId1)
+memcachedServer1 --> Client1: value1
+
+' client1 removes value2 and try to retrieve it
+Client1 -> memcachedServer3: delUserValue (userId2)
+Client1 -> memcachedServer2: getUserValue (userId2)
+memcachedServer2 --> Client1: null
+note right: the value for userId2 is deleted
+Client1 -> memcachedServer3: getUserValue (userId2)
+memcachedServer3 --> Client1: null
+note right: the value for userId2 is deleted
+Client1 -> memcachedServer1: getUserValue (userId2)
+memcachedServer1 --> Client1: null
+note right: the value for userId2 is deleted
+
+' tests that value1 is still available
+Client1 -> memcachedServer3: delUserValue (userId1)
+Client1 -> memcachedServer2: getUserValue (userId1)
+memcachedServer2 --> Client1: null
+note right: the value for userId1 is deleted
+Client1 -> memcachedServer3: getUserValue (userId1)
+memcachedServer3 --> Client1: null
+note right: the value for userId1 is deleted
+Client1 -> memcachedServer1: getUserValue (userId1)
+memcachedServer1 --> Client1: null
+note right: the value for userId1 is deleted
+
+'the values are also deleted for Client2
+Client2 -> memcachedServer2: getUserValue (userId2)
+memcachedServer2 --> Client2: null
+note right: the value for userId2 is deleted
+Client2 -> memcachedServer3: getUserValue (userId2)
+memcachedServer3 --> Client2: null
+note right: the value for userId2 is deleted
+Client2 -> memcachedServer1: getUserValue (userId2)
+memcachedServer1 --> Client2: null
+note right: the value for userId2 is deleted
+Client2 -> memcachedServer2: getUserValue (userId1)
+memcachedServer2 --> Client2: null
+note right: the value for userId1 is deleted
+Client2 -> memcachedServer3: getUserValue (userId1)
+memcachedServer3 --> Client2: null
+note right: the value for userId1 is deleted
+Client2 -> memcachedServer1: getUserValue (userId1)
+memcachedServer1 --> Client2: null
+note right: the value for userId1 is deleted
+
+@enduml
