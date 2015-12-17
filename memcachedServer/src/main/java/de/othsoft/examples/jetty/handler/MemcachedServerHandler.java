@@ -55,35 +55,79 @@ public class MemcachedServerHandler extends AbstractHandler {
         }
         else if (appKey==null) {
             logger.error("<<{}>> appKey==null",Identifier.getInst().getName());
-            errorResponse(baseRequest, response, "appKey==null, :'-(");            
+            errorResponse(baseRequest, response, "appKey==null, :'-(");
+            return;
         }
-        else {
-            try {
-                String contextPath = request.getRequestURI(); 
-                if (contextPath==null) {
-                        successResponse(baseRequest, response, ":-)"); 
+        try {
+            String contextPath = request.getRequestURI(); 
+            if (contextPath==null) {
+                successResponse(baseRequest, response, ":-)"); 
+                return;
+            }
+            switch (contextPath) {
+            case "/getUserId":
+                String userId = cache.createUniqueUserKey(Identifier.getInst().getName());
+                successResponse(baseRequest, response, "userId="+userId);
+                return;
+            case "/getValue":
+                // http://my_server/getValue?user=userKey&key=keyName
+                {
+                    String[] userAndKey = getUserAndKeyFromRequest(baseRequest, response, request);
+                    if (userAndKey==null) return;
+                    String value = cache.getStrValue(appKey,userAndKey[0], userAndKey[1]);
+                    if (value!=null)
+                        successResponse(baseRequest, response, userAndKey[1]+"="+value);
+                    else
+                        successResponse(baseRequest, response, userAndKey[1]+"=");                    
+                }
+                break;
+            case "/setValue":
+                // http://my_server/setValue?user=userKey&key=keyName&value=valueToSave
+                {
+                    String[] userAndKey = getUserAndKeyFromRequest(baseRequest, response, request);
+                    if (userAndKey==null) return;
+                    String value = request.getParameter("value");
+                    if (value==null) {
+                        errorResponse(baseRequest, response,"no value set for request");
                         return;
+                    }
+                    cache.setStrValue(appKey,userAndKey[0], userAndKey[1],value);
+                    successResponse(baseRequest, response, ":-)");
                 }
-                switch (contextPath) {
-                    case "/getUserId":
-                        String userId = cache.createUniqueUserKey(Identifier.getInst().getName());
-                        successResponse(baseRequest, response, "userId="+userId);
-                        break;
-                    case "/getValue":
-                        break;
-                    case "/setValue":
-                        break;
-                    case "/delValue":
-                        break;
-                    default:
-                        successResponse(baseRequest, response, ":-D");
+                break;
+            case "/delValue":
+                {
+                    String[] userAndKey = getUserAndKeyFromRequest(baseRequest, response, request);
+                    if (userAndKey==null) return;
+                    cache.removeValue(appKey,userAndKey[0], userAndKey[1]);
+                    successResponse(baseRequest, response, ":-)");
                 }
-            }
-            catch(CacheException e) {
-                logger.error("<<{}>> error while contact cache: [{}] {}",Identifier.getInst().getName(),e.getClass().getName(),e.getMessage());
-                errorResponse(baseRequest, response, "error while contact cache");            
+                break;
+            default:
+                successResponse(baseRequest, response, ":-D");
             }
         }
+        catch(CacheException e) {
+            logger.error("<<{}>> error while contact cache: [{}] {}",Identifier.getInst().getName(),e.getClass().getName(),e.getMessage());
+            errorResponse(baseRequest, response, "error while contact cache");            
+        }
+    }
+    
+    private String[] getUserAndKeyFromRequest(Request baseRequest,HttpServletResponse response,HttpServletRequest request) throws IOException {
+        String key = request.getParameter("key");
+        if (key==null) {
+            errorResponse(baseRequest, response,"no key set for request");
+            return null;
+        }
+        String user = request.getParameter("user");
+        if (user==null) {
+            errorResponse(baseRequest, response,"no user set for request");
+            return null;            
+        }
+        String[] ret = new String[2];
+        ret[0] = user;
+        ret[1] = key;
+        return ret;
     }
     
     private void successResponse(Request baseRequest,HttpServletResponse response,String content) throws IOException {
@@ -94,6 +138,7 @@ public class MemcachedServerHandler extends AbstractHandler {
     }    
 
     private void errorResponse(Request baseRequest,HttpServletResponse response,String content) throws IOException {
+        logger.error("<<{}>> errorResponse: {}",Identifier.getInst().getName(),content);
         response.setContentType("text/html;charset=utf-8");
         response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
         baseRequest.setHandled(true);

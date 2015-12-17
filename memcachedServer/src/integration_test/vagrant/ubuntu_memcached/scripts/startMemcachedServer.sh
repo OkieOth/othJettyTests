@@ -67,10 +67,7 @@ while [ $COUNTER -lt $MAX_VALUE ]; do
 	else
 		# do stop the program
                 echo "stop MemcachedServer on port $START_PORT"
-		if ! screen -X -S MemcachedServer_$START_PORT quit; then
-			popd
-			exit 1
-		fi
+		screen -X -S MemcachedServer_$START_PORT quit
 	fi
 	let START_PORT=START_PORT+1
 	let COUNTER=COUNTER+1
