@@ -29,6 +29,7 @@ import org.apache.http.params.HttpParams
 import org.apache.http.impl.client.HttpClients
 import org.apache.http.util.EntityUtils
 import java.net.URLEncoder
+import java.net.URLDecoder
 
 /**
  *
@@ -101,6 +102,7 @@ class Test_QueryMemcachedServer {
         
         def userId1 = new URL("http://$vmIp:$serverPort1/getUserId").getText();
         def userId2 = new URL("http://$vmIp:$serverPort2/getUserId").getText();
+
         assertNotNull ('userId1 is null',userId1)
         assertNotNull ('userId2 is null',userId2)
         assertTrue('userId1: response content do not start with userId=',userId1.indexOf('userId=')==0);
@@ -116,45 +118,35 @@ class Test_QueryMemcachedServer {
         
         checkAllServerForEmptyValue(userId1,key1);
         checkAllServerForEmptyValue(userId2,key1);
-        
-        /*
-        for (int i=0;i<10;i++) {
-            for (int j=portStart;j<portEnd;j++) {
-                def urlTxt = "http://$vmIp:$j";
-                println "request $urlTxt, run $i"
-                def responseTxt = new URL(urlTxt).getText();
-                assertNotNull("no response from $urlTxt",responseTxt);
-                assertTrue("wrong response from $urlTxt",responseTxt.indexOf(':-)')!=-1)
+        checkAllServerForEmptyValue(userId1,key2);
+        checkAllServerForEmptyValue(userId2,key2);
+
+        String value1 = "äÜ123` ;()%?";
+        sendRequestToServer (vmIp,serverPort1,'/setValue',userId1,key1,value1);
+        try {
+            checkAllServerForValue(userId1,key1,value1);
+            checkAllServerForEmptyValue(userId2,key1);
+            checkAllServerForEmptyValue(userId1,key2);
+            checkAllServerForEmptyValue(userId2,key2);
+            
+            String value2 = "apfareaürs 3l4l fladrl lr ld xlv clyfödrö4ö5  lcllslfl vll fdlf";
+            sendRequestToServer (vmIp,serverPort3,'/setValue',userId1,key2,value2);
+            checkAllServerForValue(userId1,key2,value2);
+        }
+        finally {
+            sendRequestToServer (vmIp,serverPort1,'/delValue',userId1,key1,null);
+            try {
+                checkAllServerForEmptyValue(userId1,key1);
+                checkAllServerForEmptyValue(userId2,key1);
+            }
+            finally {
+                sendRequestToServer (vmIp,serverPort1,'/delValue',userId1,key2,null);
+                checkAllServerForEmptyValue(userId1,key2);
+                checkAllServerForEmptyValue(userId2,key2);                
             }
         }
-        */
     }
-    
-    /*
-    private void checkAllServerForEmptyKey(String userId,String key) {
-        def serverPort1 = portStart
-        def serverPort2 = serverPort1 + 1
-        def serverPort3 = serverPort2 + 1
-        def response1 = new URL("http://$vmIp:$serverPort1/getValue?user=$userId&key=$key").getText();
-        def response2 = new URL("http://$vmIp:$serverPort2/getValue?user=$userId&key=$key").getText();
-        def response3 = new URL("http://$vmIp:$serverPort3/getValue?user=$userId&key=$key").getText();
-        assertNotNull ('response1 is null',response1)
-        assertNotNull ('response2 is null',response2)
-        assertNotNull ('response3 is null',response3)
-        assertTrue("response1: response content do not start with $key=",response1.indexOf("$key=")==0);
-        assertTrue("response2: response content do not start with $key=",response2.indexOf("$key=")==0);
-        assertTrue("response3: response content do not start with $key=",response3.indexOf("$key=")==0);
-
-        def value1 = response1.substring ("$key=".length());
-        def value2 = response2.substring ("$key=".length());
-        def value3 = response3.substring ("$key=".length());
-
-        assertTrue("value1 is not empty for key=$key",value1.length());
-        assertTrue("value2 is not empty for key=$key",value2.length());
-        assertTrue("value3 is not empty for key=$key",value3.length());        
-    }
-    */
-    
+        
     private String sendRequestToServer(String host,int port,String path,String user,String key,String value) {
         URIBuilder builder = new URIBuilder();
         builder.setScheme("http").setHost(host).setPort(port).setPath(path)
@@ -162,7 +154,7 @@ class Test_QueryMemcachedServer {
             .setParameter("key", URLEncoder.encode(key));
            
         if (value!=null)
-            builder.setParameter("action", "finish");
+            builder.setParameter("value", URLEncoder.encode(value));
         
         CloseableHttpClient httpclient = HttpClients.createDefault();
         HttpGet httpGet = new HttpGet(builder.build());
@@ -196,5 +188,33 @@ class Test_QueryMemcachedServer {
         assertTrue("value1 is not empty for key=$key",value1.trim().length()==0);
         assertTrue("value2 is not empty for key=$key",value2.trim().length()==0);
         assertTrue("value3 is not empty for key=$key",value3.trim().length()==0);        
+    }
+
+    private void checkAllServerForValue(String userId,String key,String value) {
+        def serverPort1 = portStart
+        def serverPort2 = serverPort1 + 1
+        def serverPort3 = serverPort2 + 1
+        def response1 = sendRequestToServer (vmIp,serverPort1,'/getValue',userId,key,null);
+        def response2 = sendRequestToServer (vmIp,serverPort2,'/getValue',userId,key,null);
+        def response3 = sendRequestToServer (vmIp,serverPort3,'/getValue',userId,key,null);
+
+        assertNotNull ('response1 is null',response1)
+        assertNotNull ('response2 is null',response2)
+        assertNotNull ('response3 is null',response3)
+        assertTrue("response1: response content do not start with $key=",response1.indexOf("$key=")==0);
+        assertTrue("response2: response content do not start with $key=",response2.indexOf("$key=")==0);
+        assertTrue("response3: response content do not start with $key=",response3.indexOf("$key=")==0);
+
+        def value1 = URLDecoder.decode(response1.substring ("$key=".length()).trim());
+        def value2 = URLDecoder.decode(response2.substring ("$key=".length()).trim());
+        def value3 = URLDecoder.decode(response3.substring ("$key=".length()).trim());
+        
+        assertTrue("value1 is empty for key=$key",value1.length()>0);
+        assertTrue("value2 is empty for key=$key",value2.length()>0);
+        assertTrue("value3 is empty for key=$key",value3.length()>0);        
+
+        assertEquals("value1 is not equal to the saved value for key=$key",value,value1);
+        assertEquals("value2 is not equal to the saved value for key=$key",value,value2);
+        assertEquals("value3 is not equal to the saved value for key=$key",value,value3);        
     }
 }

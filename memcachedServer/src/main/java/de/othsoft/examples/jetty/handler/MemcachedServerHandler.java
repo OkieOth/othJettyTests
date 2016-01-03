@@ -30,11 +30,11 @@ import org.slf4j.LoggerFactory;
  * @author eiko
  */
 public class MemcachedServerHandler extends AbstractHandler {
-    static ICache cache = null;
-    static String appKey = null;
+    ICache cache = null;
+    String appKey = null;
     private static Logger logger = LoggerFactory.getLogger(MemcachedServerHandler.class);
     
-    static {
+    private void init() {
         CacheImpl cI = new CacheImpl();
         cI.setServer("127.0.0.1",11211);
         try {
@@ -44,6 +44,22 @@ public class MemcachedServerHandler extends AbstractHandler {
         catch (CacheException e) {
             logger.error("<<{}>> error while get appKey: [{}] {}",Identifier.getInst().getName(),e.getClass().getName(),e.getMessage());
         }
+    }
+    
+    public MemcachedServerHandler() {
+        init();
+    }
+    
+    public MemcachedServerHandler(String appKeyStr) {
+        init();
+        if (appKeyStr!=null)
+            appKey = appKeyStr;
+    }
+
+    @Override
+    public void doStop() {
+        logger.info("<<{}>> doStop {}",Identifier.getInst().getName());
+        ((CacheImpl)cache).closeServerCon();
     }
     
     public void handle(String target,Request baseRequest,HttpServletRequest request,HttpServletResponse response) 
@@ -74,6 +90,7 @@ public class MemcachedServerHandler extends AbstractHandler {
                 {
                     String[] userAndKey = getUserAndKeyFromRequest(baseRequest, response, request);
                     if (userAndKey==null) return;
+                    logger.info("<<{}>> cache getValue({},{},{})",Identifier.getInst().getName(),appKey,userAndKey[0], userAndKey[1]);
                     String value = cache.getStrValue(appKey,userAndKey[0], userAndKey[1]);
                     if (value!=null)
                         successResponse(baseRequest, response, userAndKey[1]+"="+value);
@@ -91,6 +108,7 @@ public class MemcachedServerHandler extends AbstractHandler {
                         errorResponse(baseRequest, response,"no value set for request");
                         return;
                     }
+                    logger.info("<<{}>> cache setStrValue({},{},{},{})",Identifier.getInst().getName(),appKey,userAndKey[0], userAndKey[1],value);
                     cache.setStrValue(appKey,userAndKey[0], userAndKey[1],value);
                     successResponse(baseRequest, response, ":-)");
                 }
@@ -99,6 +117,7 @@ public class MemcachedServerHandler extends AbstractHandler {
                 {
                     String[] userAndKey = getUserAndKeyFromRequest(baseRequest, response, request);
                     if (userAndKey==null) return;
+                    logger.info("<<{}>> cache removeValue({},{},{})",Identifier.getInst().getName(),appKey,userAndKey[0], userAndKey[1]);
                     cache.removeValue(appKey,userAndKey[0], userAndKey[1]);
                     successResponse(baseRequest, response, ":-)");
                 }

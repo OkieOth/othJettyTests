@@ -30,15 +30,18 @@ public class MemcachedServer {
     public static void main(String[] args) {
         try {
             EmbeddedJettyRunOptions jettyOptions = new EmbeddedJettyRunOptions(MemcachedServer.class.getName());
+            jettyOptions.addOption("k", "appKey", true, "the app key that is used by this server for access values in memcached");
             jettyOptions.parse(args);
             jettyOptions.ifMissOptionPrintUsageAndExit("p");
-
+            
             String portStr = jettyOptions.getValue("p");
+            String appKey = jettyOptions.getValue("k");
             // do a reinit after the port is clear
             Identifier.init(MemcachedServer.class,portStr);
             PidFile.getInst().createPidFileAndExitWhenAlreadyExist();
             String addressStr = jettyOptions.hasOption("a") ? jettyOptions.getValue("a") : null;
-            Server server = EmbeddedJettyMainFuncs.buildServer(portStr, addressStr, new MemcachedServerHandler(),logger);
+            MemcachedServerHandler serverHandler = appKey!=null? new MemcachedServerHandler(appKey) : new MemcachedServerHandler();
+            Server server = EmbeddedJettyMainFuncs.buildServer(portStr, addressStr, serverHandler,logger);
             if (jettyOptions.hasOption("t")) {
                 String secondsToStopStr = jettyOptions.getValue("t");
                 logger.info("<<{}>> found 't' option, will stop the server in {} seconds",Identifier.getInst().getName(),secondsToStopStr);

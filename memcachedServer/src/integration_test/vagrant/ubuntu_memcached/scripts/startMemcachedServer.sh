@@ -60,7 +60,7 @@ while [ $COUNTER -lt $MAX_VALUE ]; do
 		# do start the program
 		echo `pwd`
 		echo "start MemcachedServer on port $START_PORT"
-		if ! screen -S MemcachedServer_$START_PORT -d -m  java -jar $PATH_TO_PROG/$JAR_NAME -p $START_PORT; then
+		if ! screen -S MemcachedServer_$START_PORT -d -m  java -jar $PATH_TO_PROG/$JAR_NAME -p $START_PORT -k integrationTestMemcached; then
 			popd
 			exit 1
 		fi
